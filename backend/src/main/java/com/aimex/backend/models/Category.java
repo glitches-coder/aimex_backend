@@ -10,6 +10,7 @@ public class Category {
 
     @Id
     private String id;
+    private String userId;
 
     private String name;            // Food, Travel, Shopping, etc.
     private Double budgetLimit;     // Monthly limit per category

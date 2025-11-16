@@ -4,6 +4,7 @@ import com.aimex.backend.models.Budget;
 import com.aimex.backend.models.Category;
 import com.aimex.backend.repository.BudgetRepository;
 import com.aimex.backend.repository.CategoryRepository;
+import com.aimex.backend.service.CategoryService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,41 +13,31 @@ import java.util.Optional;
 @RestController
 public class CategoriesController {
 
-    private final CategoryRepository categoryRepository;
+    private final CategoryService categoryService;
 
-    // Constructor Injection
-    public CategoriesController(CategoryRepository categoryRepository) {
-        this.categoryRepository = categoryRepository;
+    public CategoriesController(CategoryService categoryService) {
+        this.categoryService = categoryService;
     }
 
-    // GET all categories
-    @GetMapping("/aimex/categories")
-    public List<Category> getCategories() {
-        return categoryRepository.findAll();
+    @GetMapping("/aimex/{userId}/categories")
+    public List<Category> getAll(@PathVariable String userId) {
+        return categoryService.getCategoriesByUser(userId);
     }
 
-    // GET category by ID
-    @GetMapping("/aimex/categories/{id}")
-    public Optional<Category> getCategoryById(@PathVariable("id") String id) {
-        return categoryRepository.findById(id);
+    @PostMapping("/aimex/{userId}/categories")
+    public Category create(@PathVariable String userId, @RequestBody Category category) {
+        return categoryService.createCategory(userId, category);
     }
 
-    // POST create new category
-    @PostMapping("/aimex/categories")
-    public void postCategory(@RequestBody Category category) {
-        categoryRepository.save(category);
+    @PutMapping("/aimex/{userId}/categories/{id}")
+    public Category update(@PathVariable String userId, @PathVariable String id, @RequestBody Category category) {
+        return categoryService.updateCategory(userId, id, category);
     }
 
-    // DELETE category by ID
-    @DeleteMapping("/aimex/categories/{id}")
-    public void deleteCategory(@PathVariable("id") String id) {
-        categoryRepository.deleteById(id);
-    }
-
-    // PUT update category
-    @PutMapping("/aimex/categories/{id}")
-    public void putCategory(@PathVariable("id") String id, @RequestBody Category category) {
-        category.setId(id);
-        categoryRepository.save(category);
+    @DeleteMapping("/aimex/{userId}/categories/{id}")
+    public void delete(@PathVariable String userId, @PathVariable String id) {
+        categoryService.deleteCategory(userId, id);
     }
 }
+
+

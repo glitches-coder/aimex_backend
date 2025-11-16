@@ -12,7 +12,7 @@ public class Budget {
     private String id;
 
     private String userId;
-    private String categoryName;
+    private String categoryId;
 
     private Double monthlyLimit;
     private Double currentSpent;

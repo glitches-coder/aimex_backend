@@ -17,7 +17,7 @@ public class Expense {
     private String merchant;
     private String description;
 
-    private String category;         // AI suggested or user-chosen
+    private String categoryId;         // AI suggested or user-chosen
 
     private LocalDate date;
     private String paymentMethod;    // UPI, Card, Cash, Wallet, etc.
@@ -28,18 +28,4 @@ public class Expense {
     private Double confidenceScore;   // AI categorization confidence
     private String aiReasoning;       // short reason from AI
 
-
-    public Expense(String id, String userId, Double amount, String merchant, String description, String category, LocalDate date, String paymentMethod, Boolean isRecurring, Double confidenceScore, String aiReasoning) {
-        this.id = id;
-        this.userId = userId;
-        this.amount = amount;
-        this.merchant = merchant;
-        this.description = description;
-        this.category = category;
-        this.date = date;
-        this.paymentMethod = paymentMethod;
-        this.isRecurring = isRecurring;
-        this.confidenceScore = confidenceScore;
-        this.aiReasoning = aiReasoning;
-    }
 }
