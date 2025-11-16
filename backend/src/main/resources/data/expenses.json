@@ -1,0 +1,22 @@
+[
+  {
+    "_id": "1",
+    "amount": 250,
+    "merchant": "Swiggy",
+    "description": "Chicken biryani",
+    "category": "Food",
+    "date": "2025-11-15",
+    "paymentMethod": "UPI",
+    "isRecurring": false
+  },
+  {
+    "_id": "2",
+    "amount": 1500,
+    "merchant": "Uber",
+    "description": "Office commute",
+    "category": "Transport",
+    "date": "2025-11-14",
+    "paymentMethod": "Card",
+    "isRecurring": true
+  }
+]
