@@ -496,4 +496,4 @@ Contributions are welcome! Please follow these guidelines:
 
 ***
 
-**Built with ❤️ by the AIMEX Team**
+**Built with ❤️ by Glitches-Coder**
