@@ -16,12 +16,19 @@ public class CategoryService {
         this.categoryRepository = categoryRepository;
     }
 
-    public void validateCategory(String category, String userId) {
+    public void validateCategory(String categoryId, String userId) {
+        if (categoryId == null) {
+            throw new IllegalArgumentException("Category ID cannot be null");
+        }
 
+        Optional<Category> category = getCategoryById(categoryId, userId);
+        if (category.isEmpty()) {
+            throw new IllegalArgumentException("Category Not Found with ID: " + categoryId);
+        }
     }
 
     public List<Category> getCategoriesByUser(String userId) {
-        return categoryRepository.findAllCategoryById(userId);
+        return categoryRepository.findAllByUserId(userId);
     }
 
     public Optional<Category> getCategoryById(String categoryId, String userId) {
@@ -30,6 +37,7 @@ public class CategoryService {
     }
 
     public Category createCategory(String userId, Category category) {
+        category.setUserId(userId);
         return categoryRepository.save(category);
     }
 

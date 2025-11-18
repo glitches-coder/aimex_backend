@@ -13,7 +13,6 @@ public class Category {
     private String userId;
 
     private String name;            // Food, Travel, Shopping, etc.
-    private Double budgetLimit;     // Monthly limit per category
     private String color;           // UI color hex
     private String icon;            // Material icon name
 }

@@ -7,6 +7,8 @@ import com.aimex.backend.repository.BudgetRepository;
 import com.aimex.backend.repository.ExpenseRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,13 +66,17 @@ public class BudgetService {
     public Map<String, String> getBudgetAlerts(String userId) {
 
         List<Budget> budgets = getBudgets(userId);
-        List<Expense> expenses = expenseRepository.findAllByUserId(userId);
 
         Map<String, String> alerts = new HashMap<>();
 
         for (Budget budget : budgets) {
 
-            double spent = expenses.stream()
+            YearMonth budgetMonth = YearMonth.parse(budget.getMonthYear());
+            LocalDate budgetStartDate = budgetMonth.atDay(1);
+            LocalDate budgetEndDate = budgetMonth.atEndOfMonth();
+
+            double spent = expenseRepository.findByUserIdAndDateBetween(userId, budgetStartDate, budgetEndDate)
+                    .stream()
                     .filter(e -> e.getCategoryId() != null)
                     .filter(e -> e.getCategoryId().equals(budget.getCategoryId()))
                     .mapToDouble(Expense::getAmount)

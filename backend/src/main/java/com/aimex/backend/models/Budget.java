@@ -15,7 +15,6 @@ public class Budget {
     private String categoryId;
 
     private Double monthlyLimit;
-    private Double currentSpent;
 
     private String monthYear;   // "2025-11"
 }
