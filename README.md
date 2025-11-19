@@ -19,6 +19,14 @@ AIMEX Backend is a robust, scalable microservice built with Spring Boot that pow
 - **Production Monitoring**: Built-in Spring Boot Actuator for health checks and metrics
 - **NoSQL Persistence**: High-performance MongoDB integration for scalable data storage
 
+### Latest Enhancements (Nov 2025)
+
+- AI-driven categorization pipeline with OpenAI (fallbacks + merchant caching)
+- JWT-secured authentication layer with register/login flows
+- Month-aware budget alerting with detailed status payloads
+- Bulk expense import and recurring-expense detection heuristics
+- Rich analytics suite: monthly summary, category breakdown, trends, AI insights
+
 ## Architecture
 
 ### Technology Stack

@@ -5,17 +5,23 @@ import com.aimex.backend.repository.ExpenseRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final CategoryService categoryService;
+    private final AiCategorizationService aiCategorizationService;
 
-    public ExpenseService(ExpenseRepository expenseRepository, CategoryService categoryService) {
+    public ExpenseService(ExpenseRepository expenseRepository,
+                          CategoryService categoryService,
+                          AiCategorizationService aiCategorizationService) {
         this.expenseRepository = expenseRepository;
         this.categoryService = categoryService;
+        this.aiCategorizationService = aiCategorizationService;
     }
 
     // GET all expenses for a user
@@ -29,16 +35,14 @@ public class ExpenseService {
     }
 
     public Expense createExpense(String userId, Expense expense){
-        expense.setUserId(userId);
-        // TODO - Auto category stub (future LLM integration)
-        applyAICategorization(expense);
-
-        detectRecurring(expense);
-
-        expense.setDate(expense.getDate() == null ? LocalDate.now() : expense.getDate());
-        return expenseRepository.save(expense);
+        return persistExpense(userId, expense);
     }
 
+    public List<Expense> bulkCreateExpenses(String userId, List<Expense> expenses) {
+        return expenses.stream()
+                .map(expense -> persistExpense(userId, expense))
+                .collect(Collectors.toList());
+    }
 
     public void deleteExpense(String userId, String id) {
         Optional<Expense> expense = getExpenseById(userId, id);
@@ -54,20 +58,65 @@ public class ExpenseService {
         if(existingExpense.isEmpty()){
             throw new RuntimeException("Expense not found");
         }
+
+        Expense expenseToSave = existingExpense.get();
         updatedExpense.setId(id);
-        categoryService.validateCategory(updatedExpense.getCategoryId(), userId);
+        updatedExpense.setUserId(userId);
+        updatedExpense.setDate(updatedExpense.getDate() == null ? expenseToSave.getDate() : updatedExpense.getDate());
+
+        if (updatedExpense.getCategoryId() != null) {
+            categoryService.validateCategory(updatedExpense.getCategoryId(), userId);
+        } else {
+            applyAICategorization(userId, updatedExpense);
+        }
+
+        detectRecurring(userId, updatedExpense);
 
         return expenseRepository.save(updatedExpense);
     }
 
-    // AI categorization placeholder
-    private void applyAICategorization(Expense expense) {
-        // TODO: integrate OpenAI API
-        // For now, do nothing; category is user provided
+    private Expense persistExpense(String userId, Expense expense) {
+        expense.setUserId(userId);
+
+        if (expense.getDate() == null) {
+            expense.setDate(LocalDate.now());
+        }
+
+        if (expense.getCategoryId() != null) {
+            categoryService.validateCategory(expense.getCategoryId(), userId);
+        } else {
+            applyAICategorization(userId, expense);
+        }
+
+        detectRecurring(userId, expense);
+
+        return expenseRepository.save(expense);
     }
 
-    // Recurring detection placeholder
-    private void detectRecurring(Expense expense) {
-        // TODO: implement simple recurring logic later
+    private void applyAICategorization(String userId, Expense expense) {
+        aiCategorizationService.suggestCategory(userId, expense)
+                .ifPresent(suggestion -> {
+                    expense.setCategoryId(suggestion.categoryId());
+                    expense.setConfidenceScore(suggestion.confidence());
+                    expense.setAiReasoning(suggestion.reason());
+                });
+    }
+
+    private void detectRecurring(String userId, Expense expense) {
+        if (expense.getMerchant() == null || expense.getDate() == null || expense.getAmount() == null) {
+            expense.setIsRecurring(false);
+            return;
+        }
+
+        List<Expense> history = expenseRepository
+                .findByUserIdAndMerchantIgnoreCase(userId, expense.getMerchant());
+
+        long similar = history.stream()
+                .filter(existing -> existing.getDate() != null)
+                .filter(existing -> ChronoUnit.DAYS.between(existing.getDate(), expense.getDate()) <= 90)
+                .filter(existing -> Math.abs(existing.getAmount() - expense.getAmount()) <= expense.getAmount() * 0.1)
+                .count();
+
+        expense.setIsRecurring(similar >= 2);
     }
 }

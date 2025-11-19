@@ -21,19 +21,19 @@ public class CategoryService {
             throw new IllegalArgumentException("Category ID cannot be null");
         }
 
-        Optional<Category> category = getCategoryById(categoryId, userId);
+        Optional<Category> category = getCategoryById(userId, categoryId);
         if (category.isEmpty()) {
             throw new IllegalArgumentException("Category Not Found with ID: " + categoryId);
         }
     }
 
     public List<Category> getCategoriesByUser(String userId) {
-        return categoryRepository.findAllByUserId(userId);
+        return categoryRepository.findByUserId(userId);
     }
 
-    public Optional<Category> getCategoryById(String categoryId, String userId) {
+    public Optional<Category> getCategoryById(String userId, String categoryId) {
         return categoryRepository.findById(categoryId)
-                .filter( category -> category.getUserId().equals(userId));
+                .filter(category -> category.getUserId().equals(userId));
     }
 
     public Category createCategory(String userId, Category category) {

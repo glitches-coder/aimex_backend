@@ -5,14 +5,14 @@ import com.aimex.backend.models.Budget;
 import com.aimex.backend.models.Expense;
 import com.aimex.backend.repository.BudgetRepository;
 import com.aimex.backend.repository.ExpenseRepository;
+import com.aimex.backend.service.dto.BudgetAlertDTO;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class BudgetService {
@@ -63,39 +63,55 @@ public class BudgetService {
         budgetRepository.delete(existing.get());
     }
 
-    public Map<String, String> getBudgetAlerts(String userId) {
+    public List<BudgetAlertDTO> getBudgetAlerts(String userId, String monthYear) {
+        YearMonth targetMonth = resolveMonth(monthYear);
+        List<Budget> budgets = budgetRepository.findAllByUserIdAndMonthYear(userId, targetMonth.toString());
 
-        List<Budget> budgets = getBudgets(userId);
-
-        Map<String, String> alerts = new HashMap<>();
-
-        for (Budget budget : budgets) {
-
-            YearMonth budgetMonth = YearMonth.parse(budget.getMonthYear());
-            LocalDate budgetStartDate = budgetMonth.atDay(1);
-            LocalDate budgetEndDate = budgetMonth.atEndOfMonth();
-
-            double spent = expenseRepository.findByUserIdAndDateBetween(userId, budgetStartDate, budgetEndDate)
-                    .stream()
-                    .filter(e -> e.getCategoryId() != null)
-                    .filter(e -> e.getCategoryId().equals(budget.getCategoryId()))
-                    .mapToDouble(Expense::getAmount)
-                    .sum();
-
-            double percent = (spent / budget.getMonthlyLimit()) * 100.0;
-
-            String status;
-            if (percent < 70) {
-                status = "green";      // Safe zone
-            } else if (percent < 90) {
-                status = "yellow";     // Warning
-            } else {
-                status = "red";        // Critical
-            }
-
-            alerts.put(budget.getCategoryId(), status);
+        if (budgets.isEmpty()) {
+            return List.of();
         }
 
-        return alerts;
+        LocalDate start = targetMonth.atDay(1);
+        LocalDate end = targetMonth.atEndOfMonth();
+
+        return budgets.stream()
+                .map(budget -> buildAlert(userId, budget, start, end))
+                .collect(Collectors.toList());
+    }
+
+    private BudgetAlertDTO buildAlert(String userId, Budget budget, LocalDate start, LocalDate end) {
+        double spent = expenseRepository
+                .findByUserIdAndCategoryIdAndDateBetween(userId, budget.getCategoryId(), start, end)
+                .stream()
+                .mapToDouble(Expense::getAmount)
+                .sum();
+
+        double limit = Optional.ofNullable(budget.getMonthlyLimit()).orElse(0d);
+        double percent = limit == 0 ? 0 : (spent / limit) * 100.0;
+
+        return new BudgetAlertDTO(
+                budget.getCategoryId(),
+                budget.getMonthYear(),
+                spent,
+                limit,
+                percent,
+                determineStatus(percent)
+        );
+    }
+
+    private String determineStatus(double percent) {
+        if (percent < 70) {
+            return "green";
+        } else if (percent < 90) {
+            return "yellow";
+        }
+        return "red";
+    }
+
+    private YearMonth resolveMonth(String monthYear) {
+        if (monthYear == null || monthYear.isBlank()) {
+            return YearMonth.now();
+        }
+        return YearMonth.parse(monthYear);
     }
 }

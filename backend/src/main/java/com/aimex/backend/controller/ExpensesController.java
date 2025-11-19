@@ -1,7 +1,6 @@
 package com.aimex.backend.controller;
 
 import com.aimex.backend.models.Expense;
-import com.aimex.backend.repository.ExpenseRepository;
 import com.aimex.backend.service.ExpenseService;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +28,11 @@ public class ExpensesController {
     @PostMapping("/aimex/{userId}/expenses")
     public Expense postExpenses(@PathVariable("userId") String userId, @RequestBody Expense expense){
        return expenseService.createExpense(userId, expense);
+    }
+
+    @PostMapping("/aimex/{userId}/expenses/bulk")
+    public List<Expense> bulkImport(@PathVariable String userId, @RequestBody List<Expense> expenses) {
+        return expenseService.bulkCreateExpenses(userId, expenses);
     }
 
     @PutMapping("/aimex/{userId}/expenses/{id}")

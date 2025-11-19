@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface BudgetRepository extends MongoRepository<Budget,String> {
     List<Budget> findAllByUserId(String userId);
+    List<Budget> findAllByUserIdAndMonthYear(String userId, String monthYear);
 }

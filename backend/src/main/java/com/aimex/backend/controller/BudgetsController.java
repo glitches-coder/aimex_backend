@@ -1,20 +1,17 @@
 package com.aimex.backend.controller;
 
 import com.aimex.backend.models.Budget;
-import com.aimex.backend.models.Expense;
-import com.aimex.backend.repository.BudgetRepository;
 import com.aimex.backend.service.BudgetService;
+import com.aimex.backend.service.dto.BudgetAlertDTO;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @RestController
 public class BudgetsController {
 
     private final BudgetService budgetService;
-    public BudgetsController(BudgetRepository budgetRepository, BudgetService budgetService) {
+    public BudgetsController(BudgetService budgetService) {
         this.budgetService = budgetService;
     }
 
@@ -39,7 +36,8 @@ public class BudgetsController {
     }
 
     @GetMapping("/aimex/{userId}/budgets/alerts")
-    public Map<String, String> getAlerts(@PathVariable String userId) {
-        return budgetService.getBudgetAlerts(userId);
+    public List<BudgetAlertDTO> getAlerts(@PathVariable String userId,
+                                          @RequestParam(value = "monthYear", required = false) String monthYear) {
+        return budgetService.getBudgetAlerts(userId, monthYear);
     }
 }
