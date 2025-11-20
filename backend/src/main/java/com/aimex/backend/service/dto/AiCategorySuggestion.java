@@ -3,7 +3,7 @@ package com.aimex.backend.service.dto;
 public record AiCategorySuggestion(
         String categoryId,
         String categoryName,
-        double confidence(),
+        double confidence,
         String reason
 ) { }
 

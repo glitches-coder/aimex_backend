@@ -38,13 +38,19 @@ public class AiCategorizationService {
 
     public AiCategorizationService(CategoryService categoryService,
                                    RestClient.Builder restClientBuilder,
-                                   @Value("${openai.api.key:}") String apiKey,
-                                   @Value("${openai.model:gpt-4o-mini}") String model) {
+                                   @Value("${gemini.api.key:}") String apiKey,
+                                   @Value("gemini-2.0-flash-lite") String model) {
         this.categoryService = categoryService;
-        this.restClient = restClientBuilder.baseUrl("https://api.openai.com/v1").build();
         this.apiKey = apiKey;
         this.model = model;
+        // Gemini native base URL
+        this.restClient = restClientBuilder
+                .baseUrl("https://generativelanguage.googleapis.com/v1beta")
+                .defaultHeader("x-goog-api-key", apiKey) // Native Auth Header
+                .defaultHeader("Content-Type", "application/json")
+                .build();
     }
+
 
     public Optional<AiCategorySuggestion> suggestCategory(String userId, Expense expense) {
         if (expense.getCategoryId() != null) {
@@ -76,7 +82,7 @@ public class AiCategorizationService {
         if (apiKey == null || apiKey.isBlank()) {
             suggestion = heuristicGuess(merchant, categories);
         } else {
-            suggestion = callOpenAI(expense, categories);
+            suggestion = callGeminiAI(expense, categories);
             if (suggestion.isEmpty()) {
                 suggestion = heuristicGuess(merchant, categories);
             }
@@ -86,12 +92,14 @@ public class AiCategorizationService {
         return suggestion;
     }
 
-    private Optional<AiCategorySuggestion> callOpenAI(Expense expense, List<Category> categories) {
+    private Optional<AiCategorySuggestion> callGeminiAI(Expense expense, List<Category> categories) {
         try {
             String prompt = buildPrompt(expense, categories);
+
             Map<String, Object> request = Map.of(
                     "model", model,
                     "temperature", 0.2,
+                    "response_format", Map.of("type", "json_object"),
                     "messages", List.of(
                             Map.of("role", "system", "content",
                                     "You classify financial transactions into one of the provided categories. " +
@@ -153,11 +161,11 @@ public class AiCategorizationService {
             String reason = parsedContent.path("reason").asText("AI suggested category");
 
             return categories.stream()
-                    .filter(category -> categoryName != null && category.getName().equalsIgnoreCase(categoryName))
+                    .filter(category -> category.getName().equalsIgnoreCase(categoryName))
                     .findFirst()
                     .map(category -> new AiCategorySuggestion(category.getId(), category.getName(), confidence, reason));
         } catch (Exception ex) {
-            LOG.warn("Failed to parse OpenAI response: {}", ex.getMessage());
+            LOG.warn("Failed to parse GeminiAI response: {}", ex.getMessage());
             return Optional.empty();
         }
     }
@@ -184,7 +192,7 @@ public class AiCategorizationService {
             }
         }
 
-        Category fallback = categories.get(0);
+        Category fallback = categories.getFirst();
         return Optional.of(new AiCategorySuggestion(
                 fallback.getId(),
                 fallback.getName(),
