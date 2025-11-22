@@ -9,8 +9,10 @@ import java.util.List;
 
 @Repository
 public interface ExpenseRepository extends MongoRepository<Expense,String> {
-    List<Expense> findByDateBetween(LocalDate now, LocalDate start);
+    List<Expense> findByDateBetween(LocalDate start, LocalDate end);
     List<Expense> findByUserIdAndDateBetween(String userId, LocalDate start, LocalDate end);
+    List<Expense> findByUserIdAndCategoryIdAndDateBetween(String userId, String categoryId, LocalDate start, LocalDate end);
+    List<Expense> findByUserIdAndMerchantIgnoreCase(String userId, String merchant);
 
     List<Expense> findAllByUserId(String userId);
 

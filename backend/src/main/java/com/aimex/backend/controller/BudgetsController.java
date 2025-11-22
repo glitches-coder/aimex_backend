@@ -1,44 +1,43 @@
 package com.aimex.backend.controller;
 
 import com.aimex.backend.models.Budget;
-import com.aimex.backend.models.Expense;
-import com.aimex.backend.repository.BudgetRepository;
+import com.aimex.backend.service.BudgetService;
+import com.aimex.backend.service.dto.BudgetAlertDTO;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 public class BudgetsController {
 
-    private final BudgetRepository budgetRepository;
-    public BudgetsController(BudgetRepository budgetRepository) {
-        this.budgetRepository = budgetRepository;
+    private final BudgetService budgetService;
+    public BudgetsController(BudgetService budgetService) {
+        this.budgetService = budgetService;
     }
 
-    @GetMapping("/aimex/budgets")
-    public List<Budget> getBudgets(){
-        return budgetRepository.findAll();
+    @GetMapping("/aimex/{userId}/budgets")
+    public List<Budget> getBudgets(@PathVariable String userId) {
+        return budgetService.getBudgets(userId);
     }
 
-    @GetMapping("/aimex/budgets/{id}")
-    public Optional<Budget> getBudgetsById(@PathVariable("id") String id){
-        return budgetRepository.findById(id);
+    @PostMapping("/aimex/{userId}/budgets")
+    public Budget createBudget(@PathVariable String userId, @RequestBody Budget budget) {
+        return budgetService.createBudget(userId, budget);
     }
 
-    @PostMapping("/aimex/budgets")
-    public void postBudgets(@RequestBody Budget budget){
-        budgetRepository.save(budget);
+    @PutMapping("/aimex/{userId}/budgets/{id}")
+    public Budget updateBudget(@PathVariable String userId, @PathVariable String id, @RequestBody Budget budget) {
+        return budgetService.updateBudget(userId, id, budget);
     }
 
-    @DeleteMapping("/aimex/budgets/{id}")
-    public void deleteBudgetsById(@PathVariable("id") String id){
-        budgetRepository.deleteById(id);
+    @DeleteMapping("/aimex/{userId}/budgets/{id}")
+    public void deleteBudget(@PathVariable String id, @PathVariable String userId) {
+        budgetService.deleteBudget(userId, id);
     }
 
-    @PutMapping("/aimex/budgets/{id}")
-    public void putBudgetsById(@PathVariable("id") String id, @RequestBody Budget budget){
-        budget.setId(id);
-        budgetRepository.save(budget);
+    @GetMapping("/aimex/{userId}/budgets/alerts")
+    public List<BudgetAlertDTO> getAlerts(@PathVariable String userId,
+                                          @RequestParam(value = "monthYear", required = false) String monthYear) {
+        return budgetService.getBudgetAlerts(userId, monthYear);
     }
 }

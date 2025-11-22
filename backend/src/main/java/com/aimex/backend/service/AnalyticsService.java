@@ -33,7 +33,7 @@ public class AnalyticsService {
 
         Map<String, Double> categoryTotals = thisMonth.stream()
                 .collect(Collectors.groupingBy(
-                        Expense::getCategory,
+                        Expense::getCategoryId,
                         Collectors.summingDouble(Expense::getAmount)
                 ));
 
@@ -57,7 +57,7 @@ public class AnalyticsService {
         return all.stream()
                 .collect(
                         Collectors.groupingBy(
-                                Expense::getCategory,
+                                Expense::getCategoryId,
                                 Collectors.summingDouble(Expense::getAmount)
                         )
                 )

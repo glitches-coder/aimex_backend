@@ -1,7 +1,7 @@
 package com.aimex.backend.controller;
 
 import com.aimex.backend.models.Expense;
-import com.aimex.backend.repository.ExpenseRepository;
+import com.aimex.backend.service.ExpenseService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,34 +10,38 @@ import java.util.Optional;
 @RestController
 public class ExpensesController {
 
-    private final ExpenseRepository expenseRepository;
-    public ExpensesController(ExpenseRepository expenseRepository) {
-        this.expenseRepository = expenseRepository;
+    private final ExpenseService expenseService;
+    public ExpensesController(ExpenseService expenseService) {
+        this.expenseService = expenseService;
     }
 
-    @GetMapping("/aimex/expenses")
-    public List<Expense> getExpenses(){
-        return expenseRepository.findAll();
+    @GetMapping("/aimex/{userId}/expenses")
+    public List<Expense> getExpenses(@PathVariable String userId){
+        return expenseService.getAllExpenses(userId);
     }
 
-    @GetMapping("/aimex/expenses/{id}")
-    public Optional<Expense> getExpensesById(@PathVariable("id") String id){
-        return expenseRepository.findById(id);
+    @GetMapping("/aimex/{userId}/expenses/{id}")
+    public Optional<Expense> getExpensesById(@PathVariable("id") String id, @PathVariable String userId){
+        return expenseService.getExpenseById(userId, id);
     }
 
-    @PostMapping("/aimex/expenses")
-    public void postExpenses(@RequestBody Expense expense){
-        expenseRepository.save(expense);
+    @PostMapping("/aimex/{userId}/expenses")
+    public Expense postExpenses(@PathVariable("userId") String userId, @RequestBody Expense expense){
+       return expenseService.createExpense(userId, expense);
     }
 
-    @DeleteMapping("/aimex/expenses/{id}")
-    public void deleteExpensesById(@PathVariable("id") String id){
-        expenseRepository.deleteById(id);
+    @PostMapping("/aimex/{userId}/expenses/bulk")
+    public List<Expense> bulkImport(@PathVariable String userId, @RequestBody List<Expense> expenses) {
+        return expenseService.bulkCreateExpenses(userId, expenses);
     }
 
-    @PutMapping("/aimex/expenses/{id}")
-    public void putExpensesById(@PathVariable("id") String id, @RequestBody Expense expense){
-        expense.setId(id);
-        expenseRepository.save(expense);
+    @PutMapping("/aimex/{userId}/expenses/{id}")
+    public Expense update(@PathVariable String userId, @PathVariable String id, @RequestBody Expense expense) {
+        return expenseService.updateExpense(userId, id, expense);
+    }
+
+    @DeleteMapping("/aimex/{userId}/expenses/{id}")
+    public void delete(@PathVariable String userId, @PathVariable String id) {
+        expenseService.deleteExpense(userId, id);
     }
 }
