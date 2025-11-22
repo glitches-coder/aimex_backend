@@ -22,12 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AiCategorizationService {
 
     private static final Logger LOG = LoggerFactory.getLogger(AiCategorizationService.class);
-    private static final Map<String, List<String>> KEYWORD_HINTS = Map.of(
-            "food", List.of("swiggy", "zomato", "dine", "restaurant", "cafe"),
-            "travel", List.of("uber", "ola", "flight", "hotel", "airlines"),
-            "shopping", List.of("amazon", "flipkart", "mall", "shopping"),
-            "entertainment", List.of("movie", "netflix", "bookmyshow", "entertainment")
-    );
 
     private final CategoryService categoryService;
     private final RestClient restClient;
@@ -74,18 +68,29 @@ public class AiCategorizationService {
 
         List<Category> categories = categoryService.getCategoriesByUser(userId);
         if (categories.isEmpty()) {
-            return Optional.empty();
+            // If no categories are defined by the user, we cannot suggest anything meaningful.
+            return Optional.of(new AiCategorySuggestion(
+                    null,
+                    "Uncategorized",
+                    0.0,
+                    "No categories defined by user. Please create categories first."
+            ));
         }
 
-        Optional<AiCategorySuggestion> suggestion;
+        Optional<AiCategorySuggestion> suggestion = Optional.empty();
 
-        if (apiKey == null || apiKey.isBlank()) {
-            suggestion = heuristicGuess(merchant, categories);
-        } else {
+        if (apiKey != null && !apiKey.isBlank()) {
             suggestion = callGeminiAI(expense, categories);
-            if (suggestion.isEmpty()) {
-                suggestion = heuristicGuess(merchant, categories);
-            }
+        }
+
+        // If AI categorization failed or API key is missing, provide a "manual selection" suggestion.
+        if (suggestion.isEmpty()) {
+            return Optional.of(new AiCategorySuggestion(
+                    null,
+                    "Uncategorized",
+                    0.0,
+                    "The AI could not identify a category. Please select one manually."
+            ));
         }
 
         suggestion.ifPresent(result -> merchantCache.put(cacheKey, result));
@@ -97,44 +102,58 @@ public class AiCategorizationService {
             String prompt = buildPrompt(expense, categories);
 
             Map<String, Object> request = Map.of(
-                    "model", model,
-                    "temperature", 0.2,
-                    "response_format", Map.of("type", "json_object"),
-                    "messages", List.of(
-                            Map.of("role", "system", "content",
-                                    "You classify financial transactions into one of the provided categories. " +
-                                            "Respond ONLY with JSON in the form {\"categoryName\": \"Food\", \"confidence\": 0.82, \"reason\": \"...\"}."),
-                            Map.of("role", "user", "content", prompt)
+                    "contents", List.of(
+                            Map.of("parts", List.of(
+                                    Map.of("text", prompt)
+                            ))
+                    ),
+                    "generationConfig", Map.of(
+                            "temperature", 0.2,
+                            "responseMimeType", "application/json"
                     )
             );
 
             String response = restClient.post()
-                    .uri("/chat/completions")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .uri("/models/" + model + ":generateContent")
+                    .header("x-goog-api-key", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
                     .body(String.class);
 
             return parseResponse(response, categories);
+
         } catch (Exception ex) {
             LOG.warn("AI categorization failed: {}", ex.getMessage());
             return Optional.empty();
         }
     }
 
+
     private String buildPrompt(Expense expense, List<Category> categories) {
         String categoryOptions = categories.stream()
                 .map(Category::getName)
                 .reduce((a, b) -> a + ", " + b)
-                .orElse("Food, Travel, Shopping");
+                .orElse("");
 
         return """
-                Amount: %s
-                Merchant: %s
-                Description: %s
-                Categories: [%s]
-                """.formatted(
+            You are an AI that categorizes personal financial expense transactions.
+            Infer the meaning of categories only from their names. Do not assume predefined meanings.
+            Choose the most semantically appropriate category.
+
+            Respond ONLY with a JSON object in the exact format:
+            {"categoryName": "...", "confidence": 0.0, "reason": "..."}
+
+            Notes:
+            - If the transaction clearly refers to a digital game or gaming platform (e.g., Steam, Xbox, PS5, PlayStation, Battlefield etc.) -> choose the closest matching category like Gaming or similar if available.
+            - If unclear or confidence is low, pick "Uncategorized" with low confidence.
+
+            Transaction:
+            Amount: %s
+            Merchant: %s
+            Description: %s
+            Available Categories: [%s]
+            """.formatted(
                 expense.getAmount(),
                 expense.getMerchant(),
                 Optional.ofNullable(expense.getDescription()).orElse(""),
@@ -142,20 +161,29 @@ public class AiCategorizationService {
         );
     }
 
+
     private Optional<AiCategorySuggestion> parseResponse(String response, List<Category> categories) {
         try {
             JsonNode root = objectMapper.readTree(response);
-            JsonNode choices = root.path("choices");
-            if (!choices.isArray() || choices.isEmpty()) {
+
+            JsonNode candidates = root.path("candidates");
+            if (!candidates.isArray() || candidates.isEmpty()) {
                 return Optional.empty();
             }
 
-            String content = choices.get(0).path("message").path("content").asText();
-            if (content == null || content.isBlank()) {
+            String contentText = candidates.get(0)
+                    .path("content")
+                    .path("parts")
+                    .get(0)
+                    .path("text")
+                    .asText();
+
+            if (contentText == null || contentText.isBlank()) {
                 return Optional.empty();
             }
 
-            JsonNode parsedContent = objectMapper.readTree(content);
+            JsonNode parsedContent = objectMapper.readTree(contentText);
+
             String categoryName = parsedContent.path("categoryName").asText(null);
             double confidence = parsedContent.path("confidence").asDouble(0.6);
             String reason = parsedContent.path("reason").asText("AI suggested category");
@@ -164,41 +192,10 @@ public class AiCategorizationService {
                     .filter(category -> category.getName().equalsIgnoreCase(categoryName))
                     .findFirst()
                     .map(category -> new AiCategorySuggestion(category.getId(), category.getName(), confidence, reason));
+
         } catch (Exception ex) {
             LOG.warn("Failed to parse GeminiAI response: {}", ex.getMessage());
             return Optional.empty();
         }
     }
-
-    private Optional<AiCategorySuggestion> heuristicGuess(String merchant, List<Category> categories) {
-        for (Map.Entry<String, List<String>> hintEntry : KEYWORD_HINTS.entrySet()) {
-            boolean matches = hintEntry.getValue().stream().anyMatch(merchant::contains);
-            if (!matches) {
-                continue;
-            }
-
-            Optional<Category> matchedCategory = categories.stream()
-                    .filter(category -> category.getName().toLowerCase().contains(hintEntry.getKey()))
-                    .findFirst();
-
-            if (matchedCategory.isPresent()) {
-                Category category = matchedCategory.get();
-                return Optional.of(new AiCategorySuggestion(
-                        category.getId(),
-                        category.getName(),
-                        0.55,
-                        "Matched merchant keywords to category " + category.getName()
-                ));
-            }
-        }
-
-        Category fallback = categories.getFirst();
-        return Optional.of(new AiCategorySuggestion(
-                fallback.getId(),
-                fallback.getName(),
-                0.4,
-                "Fallback category due to missing AI key/keywords"
-        ));
-    }
 }
-

@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.aimex</groupId>
 	<artifactId>backend</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.1</version>
 	<name>backend</name>
 	<description>expense tracker with integrated AI, backend service for aimex</description>
 	<url/>
