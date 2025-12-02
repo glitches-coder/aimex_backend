@@ -4,7 +4,6 @@
 
 Enterprise-grade RESTful API service for intelligent expense management with AI-driven categorization and analytics capabilities.
 
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5g.shields./img.shields.io/badge/MongoDB-Latest-greenimg.shields.io/badge/License-Proprietary-blue
 ## Overview
 
 AIMEX Backend is a robust, scalable microservice built with Spring Boot that powers an intelligent expense tracking platform. The system leverages AI capabilities to automatically categorize expenses, provide financial insights, and help users maintain budget discipline through real-time analytics and monitoring.
